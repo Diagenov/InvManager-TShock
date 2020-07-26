@@ -233,7 +233,7 @@ namespace InventoryManager
                         bool? isPrivate = null;
                         int page = 1;
 
-                        if (e.Parameters.Count > 2)
+                        if (e.Parameters.Count > 1)
                         {
                             for (int i = 1; i < e.Parameters.Count; i++)
                             {
@@ -292,7 +292,7 @@ namespace InventoryManager
 
                         var list = Database.GetList(name, author, isPrivate, username);
 
-                        PaginationTools.SendPage(e.Player, page, list,
+                        PaginationTools.SendPage(e.Player, page, PaginationTools.BuildLinesFromTerms(list),
                             new PaginationTools.Settings
                             {
                                 HeaderFormat = $"Inventories {string.Join(", ", tags)} ({{0}}/{{1}}):",
