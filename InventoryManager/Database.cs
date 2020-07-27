@@ -92,10 +92,8 @@ namespace InventoryManager
             return result > 0;
         }
 
-        public static bool AllowUser(string username, ref Inventory inv)
+        public static bool UpdUsernames(ref Inventory inv)
         {
-            inv.usernames.Add(username);
-
             int result = database.Query("UPDATE Inventories SET Usernames=@1 WHERE Name=@0",
                 inv.name,
                 JsonConvert.SerializeObject(inv.usernames)
@@ -235,7 +233,7 @@ namespace InventoryManager
     {
         public Skin(Player p)
         {
-            Varient = (byte)p.skinVariant;
+            Variant = (byte)p.skinVariant;
             Hair = (byte)p.hair;
             HairDye = p.hairDye;
             HideMisc = p.hideMisc;
@@ -250,11 +248,14 @@ namespace InventoryManager
             var hideV = p.hideVisibleAccessory;
             HideV1 = new BitsByte(hideV[0], hideV[1], hideV[2], hideV[3], hideV[4], hideV[5], hideV[6], hideV[7]);
             HideV2 = new BitsByte(hideV[8], hideV[9]);
+
+            HP = (short)p.statLifeMax;
+            Mana = (short)p.statManaMax;
         }
 
         public void Send(TSPlayer p)
         {
-            p.TPlayer.skinVariant = Varient;
+            p.TPlayer.skinVariant = Variant;
             p.TPlayer.hair = Hair;
             p.TPlayer.hairDye = HairDye;
             p.TPlayer.hideMisc = HideMisc;
@@ -270,10 +271,22 @@ namespace InventoryManager
             for (byte i = 0; i < 10; i++)
                 p.TPlayer.hideVisibleAccessory[i] = i < 8 ? hideV1[i] : hideV2[i - 8];
 
-            p.SendData(PacketTypes.PlayerInfo, null, p.Index);
+            TSPlayer.All.SendData(PacketTypes.PlayerInfo, null, p.Index);
+
+            if (Mana > 0)
+            {
+                p.TPlayer.statManaMax = p.TPlayer.statMana = Mana;
+                TSPlayer.All.SendData(PacketTypes.PlayerMana, null, p.Index);
+            }
+
+            if (HP > 0)
+            {
+                p.TPlayer.statLifeMax = p.TPlayer.statLife = HP;
+                TSPlayer.All.SendData(PacketTypes.PlayerHp, null, p.Index);
+            }
         }
 
-        public byte Varient;
+        public byte Variant;
         public byte Hair;
         public byte HairDye;
         public byte HideV1;
@@ -286,6 +299,8 @@ namespace InventoryManager
         public RGB UnderShirtC;
         public RGB PantsC;
         public RGB ShoeC;
+        public short Mana;
+        public short HP;
     }
 
     public struct ItemSlot
@@ -337,7 +352,7 @@ namespace InventoryManager
             i.stack = stack;
             i.prefix = prefix;
 
-            p.SendData(PacketTypes.PlayerSlot, i.Name, p.Index, slot, prefix);
+            TSPlayer.All.SendData(PacketTypes.PlayerSlot, i.Name, p.Index, slot, prefix);
         }
 
         public short slot;

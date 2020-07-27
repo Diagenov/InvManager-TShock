@@ -80,7 +80,7 @@ namespace InventoryManager
             {
                 case "load":
                     {
-                        if (e.Parameters.Count < 2)
+                        if (e.Parameters.Count < 2 || !e.Player.RealPlayer)
                             e.Player.SendInfoMessage("Syntax: /inv load Name");
                         else
                         {
@@ -115,7 +115,7 @@ namespace InventoryManager
                     }
                 case "save":
                     {
-                        if (e.Parameters.Count < 2)
+                        if (e.Parameters.Count < 2 || !e.Player.RealPlayer)
                             e.Player.SendInfoMessage("Syntax: /inv save Name");
                         else
                         {
@@ -157,15 +157,16 @@ namespace InventoryManager
                                 e.Player.SendErrorMessage($"Inventory \"{name}\" not found.");
                             else if (inv.author != e.Player.Account.Name && !e.Player.HasPermission("diogen.invmanager.admin"))
                                 e.Player.SendErrorMessage($"You do not have permission to change this inventory");
-                            if (Database.UpdPrivate(name, isPrivate))
+                            else if (Database.UpdPrivate(name, isPrivate))
                                 e.Player.SendSuccessMessage($"The status of the inventory \"{name}\" changed: {(isPrivate ? "private" : "public")}.");
                         }
                         break;
                     }
-                case "allow": 
+                case "allow":
+                case "remove":
                     {
                         if (e.Parameters.Count < 3)
-                            e.Player.SendInfoMessage("Syntax: /inv allow Username Name");
+                            e.Player.SendInfoMessage($"Syntax: /inv {e.Parameters[0]} Username Name");
                         else
                         {
                             var username = e.Parameters[1];
@@ -181,8 +182,30 @@ namespace InventoryManager
                                     e.Player.SendErrorMessage($"Inventory \"{name}\" not found.");
                                 else if (inv.author != e.Player.Account.Name && !e.Player.HasPermission("diogen.invmanager.admin"))
                                     e.Player.SendErrorMessage($"You do not have permission to change this inventory");
-                                else if (Database.AllowUser(username, ref inv))
-                                    e.Player.SendSuccessMessage("Done!");
+                                else 
+                                {
+                                    if (e.Parameters[0] == "allow")
+                                    {
+                                        if (inv.usernames.Contains(username))
+                                        {
+                                            e.Player.SendErrorMessage($"User \"{username}\" already been allowed.");
+                                            return;
+                                        }
+                                        inv.usernames.Add(username);
+                                    }
+                                    else
+                                    {
+                                        if (inv.usernames.Contains(username))
+                                        {
+                                            e.Player.SendErrorMessage($"User \"{username}\" do not been allowed.");
+                                            return;
+                                        }
+                                        inv.usernames.Remove(username);
+                                    }
+
+                                    if (Database.UpdUsernames(ref inv))
+                                        e.Player.SendSuccessMessage("Done!");
+                                }
                             }
                         }
                         break;
@@ -200,13 +223,16 @@ namespace InventoryManager
                                 e.Player.SendErrorMessage($"Inventory \"{name}\" not found.");
                             else if (inv.author != e.Player.Account.Name && !e.Player.HasPermission("diogen.invmanager.admin"))
                                 e.Player.SendErrorMessage($"You do not have permission to delete this inventory.");
-                            if (Database.Delete(name))
+                            else if (Database.Delete(name))
                                 e.Player.SendSuccessMessage($"Inventory \"{name}\" successfully deleted!");
                         }
                         break;
                     }
                 case "rest":
                     {
+                        if (!e.Player.RealPlayer)
+                            return;
+
                         var backpack = Backpacks.Find(x => x.plr == e.Player);
 
                         if (backpack != null)
@@ -231,6 +257,7 @@ namespace InventoryManager
                         string name = null, author = null, username = null;
                         var tags = new List<string>();
                         bool? isPrivate = null;
+                        bool pageTryParse = false;
                         int page = 1;
 
                         if (e.Parameters.Count > 1)
@@ -273,8 +300,6 @@ namespace InventoryManager
                                     isPrivate = false;
                                 else if (s == "-private")
                                     isPrivate = true;
-                                else
-                                    int.TryParse(s, out page);
                             }
 
                             if (name != null)
@@ -288,6 +313,9 @@ namespace InventoryManager
 
                             if (username != null)
                                 tags.Add($"shared with {username}");
+
+                            if (!(pageTryParse = int.TryParse(e.Parameters[e.Parameters.Count - 1], out page)) || page < 1)
+                                page = 1;
                         }
 
                         var list = Database.GetList(name, author, isPrivate, username);
@@ -296,7 +324,7 @@ namespace InventoryManager
                             new PaginationTools.Settings
                             {
                                 HeaderFormat = $"Inventories {string.Join(", ", tags)} ({{0}}/{{1}}):",
-                                FooterFormat = $"Type /inv list {string.Join(" ", e.Parameters.Take(e.Parameters.Count - 2))} {{0}} for more.",
+                                FooterFormat = $"Type /inv {string.Join(" ", e.Parameters.Take(e.Parameters.Count - (pageTryParse ? 1 : 0)))} {{0}} for more.",
                                 NothingToDisplayString = "Such inventories don't exist in this universe!"
                             });
                         break;
