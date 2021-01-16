@@ -94,8 +94,9 @@ namespace InventoryManager
                             else
                             {
                                 var backpack = Backpacks.Find(x => x.plr == e.Player);
+                                bool re_upload = backpack != null;
 
-                                if (backpack == null)   
+                                if (!re_upload)   
                                     Backpacks.Add(backpack = new Backpack(ref inv, e.Player));
                                 else
                                     backpack.newInv = inv;
@@ -103,7 +104,7 @@ namespace InventoryManager
                                 if (!Main.ServerSideCharacter)
                                     SendWorldInfo(backpack.plr, true);
 
-                                backpack.Send();
+                                backpack.Send(re_upload);
 
                                 if (!Main.ServerSideCharacter)
                                     SendWorldInfo(backpack.plr, false);
