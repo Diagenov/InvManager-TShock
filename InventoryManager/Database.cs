@@ -366,7 +366,7 @@ namespace InventoryManager
         public RGB (Color c)
         {
             R = c.R;
-            G = c.B;
+            G = c.G;
             B = c.B;
         }
 

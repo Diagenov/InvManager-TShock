@@ -332,7 +332,7 @@ namespace InventoryManager
                 case "info":
                     {
                         if (e.Parameters.Count < 2)
-                            e.Player.SendInfoMessage("Syntax: /inv load Name");
+                            e.Player.SendInfoMessage("Syntax: /inv info Name");
                         else
                         {
                             var name = string.Join(" ", e.Parameters.Skip(1));
@@ -347,13 +347,15 @@ namespace InventoryManager
                                 e.Player.SendInfoMessage($"Status: {(inv.isPrivate ? "private" : "public")}");
                                 e.Player.SendInfoMessage($"Shared with: {(inv.usernames.Count < 1 ? "-" : string.Join(", ", inv.usernames))}");
                                 e.Player.SendInfoMessage($"Count of occupied slots: {inv.character.items.Count}");
+                                e.Player.SendInfoMessage($"Mana: {inv.character.skin.Mana}");
+                                e.Player.SendInfoMessage($"HP: {inv.character.skin.HP}");
                             }
                         }
                         break;
                     }
                 case "help":
                     {
-                        e.Player.SendInfoMessage("Syntax: /inv [load|save|del|allow|rest|priv|info|list] arguments");
+                        e.Player.SendInfoMessage("Syntax: /inv [load|save|del|allow|remove|rest|priv|info|list] arguments");
                         break;
                     }
                 default:
@@ -372,9 +374,12 @@ namespace InventoryManager
                 this.plr = plr;
             }
 
-            public void Send()
+            public void Send(bool re_upload = false)
             {
-                oldInv.Clear(plr);
+                if (re_upload)
+                    new Character(plr.TPlayer).Clear(plr);
+                else
+                    oldInv.Clear(plr);
                 newInv.character.Send(plr);
             }
 
