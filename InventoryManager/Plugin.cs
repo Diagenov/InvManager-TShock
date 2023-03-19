@@ -406,9 +406,12 @@ namespace InventoryManager
                 {
                     w.BaseStream.Position = 2;
                     w.Write((byte)PacketTypes.WorldInfo);
-
                     w.Write((int)Main.time);
-                    w.Write(new BitsByte(Main.dayTime, Main.bloodMoon, Main.eclipse));
+                    BitsByte bb1 = 0;
+                    bb1[0] = Main.dayTime;
+                    bb1[1] = Main.bloodMoon;
+                    bb1[2] = Main.eclipse;
+                    w.Write(bb1);
                     w.Write((byte)Main.moonPhase);
                     w.Write((short)Main.maxTilesX);
                     w.Write((short)Main.maxTilesY);
@@ -440,30 +443,119 @@ namespace InventoryManager
                     w.Write((byte)Main.hellBackStyle);
                     w.Write(Main.windSpeedTarget);
                     w.Write((byte)Main.numClouds);
-
-                    int i = 0;
-                    for (i = 0; i < 3; i++)
-                        w.Write(Main.treeX[i]);
-                    for (i = 0; i < 4; i++)
-                        w.Write((byte)Main.treeStyle[i]);
-                    for (i = 0; i < 3; i++)
-                        w.Write(Main.caveBackX[i]);
-                    for (i = 0; i < 4; i++)
-                        w.Write((byte)Main.caveBackStyle[i]);
-
+                    for (int k = 0; k < 3; k++)
+                    {
+                        w.Write(Main.treeX[k]);
+                    }
+                    for (int l = 0; l < 4; l++)
+                    {
+                        w.Write((byte)Main.treeStyle[l]);
+                    }
+                    for (int m = 0; m < 3; m++)
+                    {
+                        w.Write(Main.caveBackX[m]);
+                    }
+                    for (int n = 0; n < 4; n++)
+                    {
+                        w.Write((byte)Main.caveBackStyle[n]);
+                    }
                     WorldGen.TreeTops.SyncSend(w);
-                    if (!Main.raining)
-                        Main.maxRaining = 0f;
                     w.Write(Main.maxRaining);
-
-                    w.Write(new BitsByte(WorldGen.shadowOrbSmashed, NPC.downedBoss1, NPC.downedBoss2, NPC.downedBoss3, Main.hardMode, NPC.downedClown, ssc, NPC.downedPlantBoss));
-                    w.Write(new BitsByte(NPC.downedMechBoss1, NPC.downedMechBoss2, NPC.downedMechBoss3, NPC.downedMechBossAny, Main.cloudBGActive >= 1f, WorldGen.crimson, Main.pumpkinMoon, Main.snowMoon));
-                    w.Write(new BitsByte(Main.fastForwardTime, Main.slimeRain, NPC.downedSlimeKing, NPC.downedQueenBee, NPC.downedFishron, NPC.downedMartians, NPC.downedAncientCultist));
-                    w.Write(new BitsByte(NPC.downedMoonlord, NPC.downedHalloweenKing, NPC.downedHalloweenTree, NPC.downedChristmasIceQueen, NPC.downedChristmasSantank, NPC.downedChristmasTree, NPC.downedGolemBoss, BirthdayParty.PartyIsUp));
-                    w.Write(new BitsByte(NPC.downedPirates, NPC.downedFrost, NPC.downedGoblins, Sandstorm.Happening, DD2Event.Ongoing, DD2Event.DownedInvasionT1, DD2Event.DownedInvasionT2, DD2Event.DownedInvasionT3));
-                    w.Write(new BitsByte(NPC.combatBookWasUsed, LanternNight.LanternsUp, NPC.downedTowerSolar, NPC.downedTowerVortex, NPC.downedTowerNebula, NPC.downedTowerStardust, Main.forceHalloweenForToday, Main.forceXMasForToday));
-                    w.Write(new BitsByte(NPC.boughtCat, NPC.boughtDog, NPC.boughtBunny, NPC.freeCake, Main.drunkWorld, NPC.downedEmpressOfLight, NPC.downedQueenSlime, Main.getGoodWorld));
-
+                    BitsByte bb2 = 0;
+                    bb2[0] = WorldGen.shadowOrbSmashed;
+                    bb2[1] = NPC.downedBoss1;
+                    bb2[2] = NPC.downedBoss2;
+                    bb2[3] = NPC.downedBoss3;
+                    bb2[4] = Main.hardMode;
+                    bb2[5] = NPC.downedClown;
+                    bb2[6] = Main.ServerSideCharacter || ssc;
+                    bb2[7] = NPC.downedPlantBoss;
+                    w.Write(bb2);
+                    BitsByte bb3 = 0;
+                    bb3[0] = NPC.downedMechBoss1;
+                    bb3[1] = NPC.downedMechBoss2;
+                    bb3[2] = NPC.downedMechBoss3;
+                    bb3[3] = NPC.downedMechBossAny;
+                    bb3[4] = Main.cloudBGActive >= 1f;
+                    bb3[5] = WorldGen.crimson;
+                    bb3[6] = Main.pumpkinMoon;
+                    bb3[7] = Main.snowMoon;
+                    w.Write(bb3);
+                    BitsByte bb4 = 0;
+                    bb4[1] = Main.fastForwardTimeToDawn;
+                    bb4[2] = Main.slimeRain;
+                    bb4[3] = NPC.downedSlimeKing;
+                    bb4[4] = NPC.downedQueenBee;
+                    bb4[5] = NPC.downedFishron;
+                    bb4[6] = NPC.downedMartians;
+                    bb4[7] = NPC.downedAncientCultist;
+                    w.Write(bb4);
+                    BitsByte bb5 = 0;
+                    bb5[0] = NPC.downedMoonlord;
+                    bb5[1] = NPC.downedHalloweenKing;
+                    bb5[2] = NPC.downedHalloweenTree;
+                    bb5[3] = NPC.downedChristmasIceQueen;
+                    bb5[4] = NPC.downedChristmasSantank;
+                    bb5[5] = NPC.downedChristmasTree;
+                    bb5[6] = NPC.downedGolemBoss;
+                    bb5[7] = BirthdayParty.PartyIsUp;
+                    w.Write(bb5);
+                    BitsByte bb6 = 0;
+                    bb6[0] = NPC.downedPirates;
+                    bb6[1] = NPC.downedFrost;
+                    bb6[2] = NPC.downedGoblins;
+                    bb6[3] = Sandstorm.Happening;
+                    bb6[4] = DD2Event.Ongoing;
+                    bb6[5] = DD2Event.DownedInvasionT1;
+                    bb6[6] = DD2Event.DownedInvasionT2;
+                    bb6[7] = DD2Event.DownedInvasionT3;
+                    w.Write(bb6);
+                    BitsByte bb7 = 0;
+                    bb7[0] = NPC.combatBookWasUsed;
+                    bb7[1] = LanternNight.LanternsUp;
+                    bb7[2] = NPC.downedTowerSolar;
+                    bb7[3] = NPC.downedTowerVortex;
+                    bb7[4] = NPC.downedTowerNebula;
+                    bb7[5] = NPC.downedTowerStardust;
+                    bb7[6] = Main.forceHalloweenForToday;
+                    bb7[7] = Main.forceXMasForToday;
+                    w.Write(bb7);
+                    BitsByte bb8 = 0;
+                    bb8[0] = NPC.boughtCat;
+                    bb8[1] = NPC.boughtDog;
+                    bb8[2] = NPC.boughtBunny;
+                    bb8[3] = NPC.freeCake;
+                    bb8[4] = Main.drunkWorld;
+                    bb8[5] = NPC.downedEmpressOfLight;
+                    bb8[6] = NPC.downedQueenSlime;
+                    bb8[7] = Main.getGoodWorld;
+                    w.Write(bb8);
+                    BitsByte bb9 = 0;
+                    bb9[0] = Main.tenthAnniversaryWorld;
+                    bb9[1] = Main.dontStarveWorld;
+                    bb9[2] = NPC.downedDeerclops;
+                    bb9[3] = Main.notTheBeesWorld;
+                    bb9[4] = Main.remixWorld;
+                    bb9[5] = NPC.unlockedSlimeBlueSpawn;
+                    bb9[6] = NPC.combatBookVolumeTwoWasUsed;
+                    bb9[7] = NPC.peddlersSatchelWasUsed;
+                    w.Write(bb9);
+                    BitsByte bb10 = 0;
+                    bb10[0] = NPC.unlockedSlimeGreenSpawn;
+                    bb10[1] = NPC.unlockedSlimeOldSpawn;
+                    bb10[2] = NPC.unlockedSlimePurpleSpawn;
+                    bb10[3] = NPC.unlockedSlimeRainbowSpawn;
+                    bb10[4] = NPC.unlockedSlimeRedSpawn;
+                    bb10[5] = NPC.unlockedSlimeYellowSpawn;
+                    bb10[6] = NPC.unlockedSlimeCopperSpawn;
+                    bb10[7] = Main.fastForwardTimeToDusk;
+                    w.Write(bb10);
+                    BitsByte bb11 = 0;
+                    bb11[0] = Main.noTrapsWorld;
+                    bb11[1] = Main.zenithWorld;
+                    w.Write(bb11);
+                    w.Write((byte)Main.sundialCooldown);
+                    w.Write((byte)Main.moondialCooldown);
                     w.Write((short)WorldGen.SavedOreTiers.Copper);
                     w.Write((short)WorldGen.SavedOreTiers.Iron);
                     w.Write((short)WorldGen.SavedOreTiers.Silver);
@@ -472,14 +564,18 @@ namespace InventoryManager
                     w.Write((short)WorldGen.SavedOreTiers.Mythril);
                     w.Write((short)WorldGen.SavedOreTiers.Adamantite);
                     w.Write((sbyte)Main.invasionType);
-
                     if (SocialAPI.Network != null)
+                    {
                         w.Write(SocialAPI.Network.GetLobbyId());
+                    }
                     else
+                    {
                         w.Write(0UL);
-                    w.Write(Sandstorm.IntendedSeverity);
-
-                    short Length = (short)w.BaseStream.Position;
+                    }
+                    {
+                        w.Write(Sandstorm.IntendedSeverity);
+                    }
+                    ushort Length = (ushort)w.BaseStream.Position;
                     w.BaseStream.Position = 0;
                     w.Write(Length);
                 }
