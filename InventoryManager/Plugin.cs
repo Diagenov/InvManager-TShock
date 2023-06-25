@@ -56,14 +56,9 @@ namespace InventoryManager
 
             if (backpack != null)
             {
-                if (!Main.ServerSideCharacter)
-                    SendWorldInfo(backpack.plr, true);
-
+                SendWorldInfo(backpack.plr, true);
                 backpack.Clear();
-
-                if (!Main.ServerSideCharacter)
-                    SendWorldInfo(backpack.plr, false);
-
+                SendWorldInfo(backpack.plr, false);
                 Backpacks.Remove(backpack);
             }
         }
@@ -101,13 +96,9 @@ namespace InventoryManager
                                 else
                                     backpack.newInv = inv;
 
-                                if (!Main.ServerSideCharacter)
-                                    SendWorldInfo(backpack.plr, true);
-
+                                SendWorldInfo(backpack.plr, true);
                                 backpack.Send(re_upload);
-
-                                if (!Main.ServerSideCharacter)
-                                    SendWorldInfo(backpack.plr, false);
+                                SendWorldInfo(backpack.plr, false);
 
                                 e.Player.SendSuccessMessage($"Inventory \"{name}\" successfully loaded!");
                             }
@@ -238,14 +229,9 @@ namespace InventoryManager
 
                         if (backpack != null)
                         {
-                            if (!Main.ServerSideCharacter)
-                                SendWorldInfo(backpack.plr, true);
-
+                            SendWorldInfo(backpack.plr, true);
                             backpack.Clear();
-
-                            if (!Main.ServerSideCharacter)
-                                SendWorldInfo(backpack.plr, false);
-
+                            SendWorldInfo(backpack.plr, false);
                             Backpacks.Remove(backpack);
                             e.Player.SendSuccessMessage("Your inventory is back!");
                         }
@@ -356,7 +342,20 @@ namespace InventoryManager
                     }
                 case "help":
                     {
-                        e.Player.SendInfoMessage("Syntax: /inv [load|save|del|allow|remove|rest|priv|info|list] arguments");
+                        e.Player.SendInfoMessage("Syntax: /inv [load|save|del|allow|remove|rest|apply|priv|info|list] arguments");
+                        break;
+                    }
+                case "apply":
+                    {
+                        var backpack = Backpacks.Find(x => x.plr == e.Player);
+
+                        if (backpack != null)
+                        {
+                            Backpacks.Remove(backpack);
+                            e.Player.SendSuccessMessage($"Inventory \"{backpack.newInv.name}\" has been applied!");
+                        }
+                        else
+                            e.Player.SendErrorMessage("Your backpack not found.");
                         break;
                     }
                 default:
@@ -400,6 +399,9 @@ namespace InventoryManager
 
         public static void SendWorldInfo(TSPlayer plr, bool ssc)
         {
+            if (Main.ServerSideCharacter)
+                return;
+
             using (var s = new MemoryStream())
             {
                 using (var w = new BinaryWriter(s))
@@ -468,7 +470,7 @@ namespace InventoryManager
                     bb2[3] = NPC.downedBoss3;
                     bb2[4] = Main.hardMode;
                     bb2[5] = NPC.downedClown;
-                    bb2[6] = Main.ServerSideCharacter || ssc;
+                    bb2[6] = ssc;
                     bb2[7] = NPC.downedPlantBoss;
                     w.Write(bb2);
                     BitsByte bb3 = 0;
