@@ -22,7 +22,7 @@ namespace InventoryManager
             database = new SqliteConnection(string.Format("uri=file://{0},Version=3", Path.Combine(TShock.SavePath, "Inventories", "Inventories.sqlite")));
 
             SqlTableCreator sqlcreator = new SqlTableCreator(database,
-                database.GetSqlType() == SqlType.Sqlite ? (IQueryBuilder)new SqliteQueryCreator() : new MysqlQueryCreator());
+                database.GetSqlType() == SqlType.Sqlite ? new SqliteQueryCreator() : new MysqlQueryCreator());
 
             sqlcreator.EnsureTableStructure(new SqlTable("Inventories",
                 new SqlColumn("Name", MySqlDbType.String) { Unique = true },
@@ -41,40 +41,12 @@ namespace InventoryManager
         public static void Save(ref Inventory inv)
         {
             database.Query("INSERT INTO Inventories (Name, Author, Private, Character, Usernames) VALUES (@0, @1, @2, @3, @4)",
-                inv.name,
-                inv.author,
-                inv.isPrivate ? 1 : 0,
-                JsonConvert.SerializeObject(inv.character),
+                inv.Name,
+                inv.Author,
+                inv.IsPrivate ? 1 : 0,
+                JsonConvert.SerializeObject(inv.Character),
                 "[]"
                 );
-        }
-
-        public static void UpdInventory(ref Inventory inv)
-        {
-            database.Query("UPDATE Inventories SET Character=@1 WHERE Name=@0",
-                   inv.name,
-                   JsonConvert.SerializeObject(inv.character)
-                   );
-        }
-
-        public static Inventory Load(string name)
-        {
-            using (QueryResult r = database.QueryReader("SELECT * FROM Inventories WHERE Name=@0", name))
-            {
-                if (r.Read())
-                {
-                    return new Inventory()
-                    {
-                        name = r.Get<string>("Name"),
-                        author = r.Get<string>("Author"),
-                        isPrivate = r.Get<int>("Private") == 1,
-                        character = JsonConvert.DeserializeObject<Character>(r.Get<string>("Character")),
-                        usernames = JsonConvert.DeserializeObject<List<string>>(r.Get<string>("Usernames"))
-                    };
-                }
-            }
-
-            return new Inventory();
         }
 
         public static bool Delete(string name)
@@ -82,24 +54,47 @@ namespace InventoryManager
             return database.Query("DELETE FROM Inventories WHERE Name = @0", name) != -1;
         }
 
-        public static bool UpdPrivate(string name, bool isPrivate)
+        public static Inventory Load(string name)
+        {
+            using (QueryResult r = database.QueryReader("SELECT * FROM Inventories WHERE Name=@0", name))
+            {
+                if (r.Read())
+                    return new Inventory()
+                    {
+                        Name = r.Get<string>("Name"),
+                        Author = r.Get<string>("Author"),
+                        IsPrivate = r.Get<int>("Private") == 1,
+                        Character = JsonConvert.DeserializeObject<Character>(r.Get<string>("Character")),
+                        Usernames = JsonConvert.DeserializeObject<List<string>>(r.Get<string>("Usernames"))
+                    };
+            }
+            return new Inventory();
+        }
+
+        public static bool UpdatePrivate(string name, bool isPrivate)
         {
             int result = database.Query("UPDATE Inventories SET Private=@1 WHERE Name=@0",
                 name,
                 isPrivate ? 1 : 0
                 );
-
             return result > 0;
         }
 
-        public static bool UpdUsernames(ref Inventory inv)
+        public static bool UpdateUsernames(ref Inventory inv)
         {
             int result = database.Query("UPDATE Inventories SET Usernames=@1 WHERE Name=@0",
-                inv.name,
-                JsonConvert.SerializeObject(inv.usernames)
+                inv.Name,
+                JsonConvert.SerializeObject(inv.Usernames)
                 );
-
             return result > 0;
+        }
+
+        public static void UpdateInventory(ref Inventory inv)
+        {
+            database.Query("UPDATE Inventories SET Character=@1 WHERE Name=@0",
+                   inv.Name,
+                   JsonConvert.SerializeObject(inv.Character)
+                   );
         }
 
         public static List<string> GetList(string name, string author, bool? isPrivate, string username)
@@ -124,113 +119,138 @@ namespace InventoryManager
             using (QueryResult r = database.QueryReader($"SELECT * FROM Inventories{condition}"))
             {
                 while (r.Read())
-                {
                     list.Add(r.Get<string>("Name"));
-                }
             }
-
             return list;
         }
     }
 
     public struct Inventory
     {
+        public List<string> Usernames;
+        public Character Character;
+        public string Name;
+        public string Author;
+        public bool IsPrivate;
+
         public Inventory(TSPlayer p, string name)
         {
-            isPrivate = false;
-            this.name = name;
-            author = p.Account.Name;
-            usernames = new List<string>();
-            character = new Character(p.TPlayer);
+            IsPrivate = false;
+            Name = name;
+            Author = p.Account.Name;
+            Usernames = new List<string>();
+            Character = new Character(p.TPlayer);
+        }
+
+        public bool HasPermission(TSPlayer player)
+        {
+            return !IsPrivate || Usernames.Contains(player.Account.Name) || CanManage(player);
+        }
+
+        public bool CanManage(TSPlayer player)
+        {
+            return Author == player.Account.Name || player.HasPermission("diogen.invmanager.admin");
         }
 
         public void Clear()
         {
-            usernames.Clear();
-            character.items.Clear();
+            Usernames.Clear();
+            Character.Items.Clear();
         }
-
-        public List<string> usernames;
-        public Character character;
-        public string name;
-        public string author;
-        public bool isPrivate;
     }
 
     public struct Character
     {
+        public List<ItemSlot> Items;
+        public Skin Skin;
+
         public Character(Player p)
         {
-            items = new List<ItemSlot>();
-            skin = new Skin(p);
+            Items = new List<ItemSlot>();
+            Skin = new Skin(p);
             short slot = -1;
 
             foreach (var i in p.inventory)
             {
                 slot++;
                 if (!i.active || i.netID == 0 || i.stack == 0)
+                {
                     continue;
-
-                items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
+                }
+                Items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
             }
-
             foreach (var i in p.armor)
             {
                 slot++;
                 if (!i.active || i.netID == 0 || i.stack == 0)
+                {
                     continue;
-
-                items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
+                }
+                Items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
             }
-
             foreach (var i in p.dye)
             {
                 slot++;
                 if (!i.active || i.netID == 0 || i.stack == 0)
+                {
                     continue;
-
-                items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
+                }
+                Items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
             }
-
             foreach (var i in p.miscEquips)
             {
                 slot++;
                 if (!i.active || i.netID == 0 || i.stack == 0)
+                {
                     continue;
-
-                items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
+                }
+                Items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
             }
-
             foreach (var i in p.miscDyes)
             {
                 slot++;
                 if (!i.active || i.netID == 0 || i.stack == 0)
+                {
                     continue;
-
-                items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
+                }
+                Items.Add(new ItemSlot(slot, i.netID, i.stack, i.prefix));
             }
         }
 
         public void Send(TSPlayer p)
         {
-            foreach (var i in items)
+            foreach (var i in Items)
+            {
                 i.Send(p);
-
-            skin.Send(p);
+            }
+            Skin.Send(p);
         }
 
         public void Clear(TSPlayer p)
         {
-            foreach (var i in items)
-                new ItemSlot(i.slot, 0, 0, 0).Send(p);
+            foreach (var i in Items)
+                new ItemSlot(i.Slot, 0, 0, 0).Send(p);
         }
-
-        public List<ItemSlot> items;
-        public Skin skin;
     }
 
     public struct Skin
     {
+        public byte Variant;
+        public byte Hair;
+        public byte HairDye;
+        public byte HideV1;
+        public byte HideV2;
+        public byte HideMisc;
+        public RGB HairC;
+        public RGB SkinC;
+        public RGB EyeC;
+        public RGB ShirtC;
+        public RGB UnderShirtC;
+        public RGB PantsC;
+        public RGB ShoeC;
+        public short Mana;
+        public short HP;
+
         public Skin(Player p)
         {
             Variant = (byte)p.skinVariant;
@@ -259,13 +279,13 @@ namespace InventoryManager
             p.TPlayer.hair = Hair;
             p.TPlayer.hairDye = HairDye;
             p.TPlayer.hideMisc = HideMisc;
-            p.TPlayer.hairColor = HairC.GetColor();
-            p.TPlayer.skinColor = SkinC.GetColor();
-            p.TPlayer.eyeColor = EyeC.GetColor();
-            p.TPlayer.shirtColor = ShirtC.GetColor();
-            p.TPlayer.underShirtColor = UnderShirtC.GetColor();
-            p.TPlayer.pantsColor = PantsC.GetColor();
-            p.TPlayer.shoeColor = ShoeC.GetColor();
+            p.TPlayer.hairColor = HairC.GetColor;
+            p.TPlayer.skinColor = SkinC.GetColor;
+            p.TPlayer.eyeColor = EyeC.GetColor;
+            p.TPlayer.shirtColor = ShirtC.GetColor;
+            p.TPlayer.underShirtColor = UnderShirtC.GetColor;
+            p.TPlayer.pantsColor = PantsC.GetColor;
+            p.TPlayer.shoeColor = ShoeC.GetColor;
 
             BitsByte hideV1 = HideV1, hideV2 = HideV2;
             for (byte i = 0; i < 10; i++)
@@ -278,105 +298,81 @@ namespace InventoryManager
                 p.TPlayer.statManaMax = p.TPlayer.statMana = Mana;
                 TSPlayer.All.SendData(PacketTypes.PlayerMana, null, p.Index);
             }
-
             if (HP > 0)
             {
                 p.TPlayer.statLifeMax = p.TPlayer.statLife = HP;
                 TSPlayer.All.SendData(PacketTypes.PlayerHp, null, p.Index);
             }
         }
-
-        public byte Variant;
-        public byte Hair;
-        public byte HairDye;
-        public byte HideV1;
-        public byte HideV2;
-        public byte HideMisc;
-        public RGB HairC;
-        public RGB SkinC;
-        public RGB EyeC;
-        public RGB ShirtC;
-        public RGB UnderShirtC;
-        public RGB PantsC;
-        public RGB ShoeC;
-        public short Mana;
-        public short HP;
     }
 
     public struct ItemSlot
     {
-        public ItemSlot(short slot, int netId, int stack, byte prefix)
+        public short Slot;
+        public byte Prefix;
+        public int NetID;
+        public int Stack;
+
+        public ItemSlot(short slot, int netID, int stack, byte prefix)
         {
-            this.slot = slot;
-            this.netId = netId;
-            this.stack = stack;
-            this.prefix = prefix;
+            Slot = slot;
+            NetID = netID;
+            Stack = stack;
+            Prefix = prefix;
         }
 
         public void Send(TSPlayer p)
         {
             Item i = null;
-
-            if (slot < NetItem.InventoryIndex.Item2)
+            if (Slot < NetItem.InventoryIndex.Item2)
             {
                 //0-58
-                i = p.TPlayer.inventory[slot];
+                i = p.TPlayer.inventory[Slot];
             }
-            else if (slot < NetItem.ArmorIndex.Item2)
-
+            else if (Slot < NetItem.ArmorIndex.Item2)
             {
                 //59-78
-                i = p.TPlayer.armor[slot - NetItem.ArmorIndex.Item1];
+                i = p.TPlayer.armor[Slot - NetItem.ArmorIndex.Item1];
             }
-            else if (slot < NetItem.DyeIndex.Item2)
-
+            else if (Slot < NetItem.DyeIndex.Item2)
             {
                 //79-88
-                i = p.TPlayer.dye[slot - NetItem.DyeIndex.Item1];
+                i = p.TPlayer.dye[Slot - NetItem.DyeIndex.Item1];
             }
-            else if (slot < NetItem.MiscEquipIndex.Item2)
+            else if (Slot < NetItem.MiscEquipIndex.Item2)
             {
                 //89-93
-                i = p.TPlayer.miscEquips[slot - NetItem.MiscEquipIndex.Item1];
+                i = p.TPlayer.miscEquips[Slot - NetItem.MiscEquipIndex.Item1];
             }
-            else if (slot < NetItem.MiscDyeIndex.Item2)
+            else if (Slot < NetItem.MiscDyeIndex.Item2)
             {
                 //93-98
-                i = p.TPlayer.miscDyes[slot - NetItem.MiscDyeIndex.Item1];
+                i = p.TPlayer.miscDyes[Slot - NetItem.MiscDyeIndex.Item1];
             }
-
             if (i == null)
+            {
                 return;
-
-            i.netDefaults(netId);
-            i.stack = stack;
-            i.prefix = prefix;
-
-            TSPlayer.All.SendData(PacketTypes.PlayerSlot, i.Name, p.Index, slot, prefix);
+            }
+            i.netDefaults(NetID);
+            i.stack = Stack;
+            i.prefix = Prefix;
+            TSPlayer.All.SendData(PacketTypes.PlayerSlot, i.Name, p.Index, Slot, Prefix);
         }
-
-        public short slot;
-        public byte prefix;
-        public int netId;
-        public int stack;
     }
 
     public struct RGB
     {
-        public RGB (Color c)
-        {
-            R = c.R;
-            G = c.G;
-            B = c.B;
-        }
-
-        public Color GetColor()
-        {
-            return new Color(R, G, B);
-        }
-
         public byte R;
         public byte G;
         public byte B;
+
+        public Color GetColor => new Color(R, G, B);
+
+        public RGB (Color color)
+        {
+            R = color.R;
+            G = color.G;
+            B = color.B;
+        }
     }
 }

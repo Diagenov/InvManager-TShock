@@ -1,0 +1,68 @@
+void OnReload(ReloadEventArgs e)
+{
+	foreach (var x in Directory.GetFiles(Path.Combine("BotogenInvs")))
+	{
+		var name = x.Split('\\').Last();
+		var inv = Database.Load(name);
+		if (inv.Name != null)
+		{
+			continue;
+		}
+
+		var buffer = File.ReadAllBytes(x);
+		inv = new Inventory()
+		{
+			IsPrivate = false,
+			Usernames = new List<string>(),
+			Character = new Character()
+			{
+				Items = new List<ItemSlot>(),
+				Skin = new Skin()
+			},
+			Author = "Aku",
+			Name = name
+		};
+
+		using (var s = new MemoryStream(buffer, 0, buffer.Length))
+		{
+			using (var r = new BinaryReader(s))
+			{
+				try
+				{
+					inv.Character.Skin.Variant = r.ReadByte();
+					inv.Character.Skin.Hair = r.ReadByte();
+					inv.Character.Skin.HairDye = r.ReadByte();
+					inv.Character.Skin.HideV1 = r.ReadByte();
+					inv.Character.Skin.HideV2 = r.ReadByte();
+					inv.Character.Skin.HideMisc = r.ReadByte();
+					inv.Character.Skin.HairC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.SkinC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.EyeC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.ShirtC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.UnderShirtC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.PantsC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					inv.Character.Skin.ShoeC = new RGB(new Color(r.ReadByte(), r.ReadByte(), r.ReadByte()));
+					r.ReadByte(); //difficulty
+
+					inv.Character.Skin.HP = 500;
+					inv.Character.Skin.Mana = 200;
+
+					for (short i = 0; i < 260; i++)
+					{
+						var stack = r.ReadInt16();
+						var prefix = r.ReadByte();
+						var netID = r.ReadInt16();
+						if (netID == 0 || stack == 0)
+							continue;
+
+						inv.Character.Items.Add(new ItemSlot(i, netID, stack, prefix));
+					}
+				}
+				catch (EndOfStreamException)
+				{
+				}
+			}
+		}
+		Database.Save(ref inv);
+	}
+}
